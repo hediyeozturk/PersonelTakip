@@ -3,7 +3,7 @@ namespace PT.DAL.Migrations
     using System;
     using System.Data.Entity.Migrations;
     
-    public partial class ilk : DbMigration
+    public partial class bes : DbMigration
     {
         public override void Up()
         {
@@ -27,7 +27,8 @@ namespace PT.DAL.Migrations
                         Surname = c.String(maxLength: 35),
                         RegisterDate = c.DateTime(nullable: false, storeType: "smalldatetime"),
                         Salary = c.Decimal(nullable: false, precision: 18, scale: 2),
-                        DepartmentID = c.Int(nullable: false),
+                        DepartmentID = c.Int(),
+                        ActivationCode = c.String(),
                         Email = c.String(maxLength: 256),
                         EmailConfirmed = c.Boolean(nullable: false),
                         PasswordHash = c.String(),
@@ -41,7 +42,7 @@ namespace PT.DAL.Migrations
                         UserName = c.String(nullable: false, maxLength: 256),
                     })
                 .PrimaryKey(t => t.Id)
-                .ForeignKey("dbo.Department", t => t.DepartmentID, cascadeDelete: true)
+                .ForeignKey("dbo.Department", t => t.DepartmentID)
                 .Index(t => t.DepartmentID)
                 .Index(t => t.UserName, unique: true, name: "UserNameIndex");
             

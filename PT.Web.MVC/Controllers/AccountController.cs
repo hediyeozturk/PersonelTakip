@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNet.Identity;
 using PT.BL.AccountRepository;
+using PT.BL.Settings;
 using PT.Entity.IdentityModel;
 using PT.Entity.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 
@@ -16,12 +18,13 @@ namespace PT.Web.MVC.Controllers
         [HttpGet]
         public ActionResult Register()
         {
+
             return View();
         }
 
         [ValidateAntiForgeryToken]
         [HttpPost]
-        public ActionResult Register(RegisterViewModel model)
+        public async Task<ActionResult> Register(RegisterViewModel model)
         {
             if (!ModelState.IsValid)
             {
@@ -50,9 +53,36 @@ namespace PT.Web.MVC.Controllers
 
             if (response.Succeeded)
             {
+                string siteURL = Request.Url.Scheme + Uri.SchemeDelimiter + Request.Url.Host + (Request.Url.IsDefaultPort ? "" : ":" + Request.Url.Port);
 
+                if (userManager.Users.Count()==1)
+                {
+                    userManager.AddToRole(user.Id, "Admin");
+                    await SiteSettings.SendMail(new MailModel
+                    {
+                        To = user.Email,
+                        Subject = "Hoşgeldin Sahip",
+                        Message = "Sitemizi yöneteceğin için çok mutluyuz ^_^"
+                    });
+                }
+                else
+                {
+                    userManager.AddToRole(user.Id, "Passive");
+                    await SiteSettings.SendMail(new MailModel
+                    {
+                        To = user.Email,
+                        Subject = "Hoşgeldin Sahip",
+                        Message = $"Merhaba {user.Name} {user.Surname}<br/>Sistemi Kulanabilmeniz için <a href='{siteURL}/Account/Activation?code={activationCod}'>Aktivasyon Kodu</a>"
+
+                    });
+                }
+                return RedirectToAction("Login", "Account");
             }
-            return View();
+            else
+            {
+                ModelState.AddModelError(string.Empty, "Kayıt işleminde bir hata oluştu");
+                return View(model);
+            }
         }
     }
 }

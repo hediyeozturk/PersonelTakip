@@ -7,13 +7,13 @@ namespace PT.DAL.Migrations
     using System.Resources;
     
     [GeneratedCode("EntityFramework.Migrations", "6.2.0-61023")]
-    public sealed partial class iki : IMigrationMetadata
+    public sealed partial class bes : IMigrationMetadata
     {
-        private readonly ResourceManager Resources = new ResourceManager(typeof(iki));
+        private readonly ResourceManager Resources = new ResourceManager(typeof(bes));
         
         string IMigrationMetadata.Id
         {
-            get { return "201711281233357_iki"; }
+            get { return "201711281426501_bes"; }
         }
         
         string IMigrationMetadata.Source
