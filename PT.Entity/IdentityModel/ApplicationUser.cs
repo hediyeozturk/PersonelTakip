@@ -19,8 +19,11 @@ namespace PT.Entity.IdentityModel
         [Column(TypeName = "smalldatetime")]
         public DateTime RegisterDate { get; set; } = DateTime.Now;
         public decimal Salary { get; set; }
-        public int DepartmentID { get; set; }
-        [ForeignKey("DepartmenID")]
+        public int? DepartmentID { get; set; }
+        public string ActivationCode { get; set; }
+
+
+        [ForeignKey("DepartmentID")]
         public virtual Department Department { get; set; }
         public virtual List<LaborLog> LaborLog { get; set; } = new List<LaborLog>();
         public virtual List<SalaryLog> SalaryLog { get; set; } = new List<Model.SalaryLog>();
