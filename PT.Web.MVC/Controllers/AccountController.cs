@@ -32,11 +32,19 @@ namespace PT.Web.MVC.Controllers
                 return View(model);
             }
             var userManager = MemberShipTools.NewUserManager();
+
             var checkUser = userManager.FindByName(model.Username);
 
             if (checkUser != null)
             {
                 ModelState.AddModelError(string.Empty, "Bu kullanıcı zaten kayıtlı!");
+                return View(model);
+            }
+
+            checkUser = userManager.FindByName(model.Email);
+            if (checkUser != null)
+            {
+                ModelState.AddModelError(string.Empty, "Bu e-posta adresi kullanımda!");
                 return View(model);
             }
 
@@ -155,5 +163,37 @@ namespace PT.Web.MVC.Controllers
             return View();
         }
 
+        public ActionResult RecoverPassword()
+        {
+            return View();
+        }
+
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        public async Task<ActionResult> RecoverPassword(string email)
+        {
+            var userStore = MemberShipTools.NewUserStore();
+            var userManager = new UserManager<ApplicationUser>(userStore);
+            var sonuc = userStore.Context.Set<ApplicationUser>().FirstOrDefault(x => x.Email == email);
+            if (sonuc==null)
+            {
+                ViewBag.sonuc = "Emaill Adresiniz Sistemde Kayıtlı Değil";
+                return View();
+            }
+            var randomPass = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 6);
+            await userStore.SetPasswordHashAsync(sonuc, userManager.PasswordHasher.HashPassword(randomPass));
+            await userStore.UpdateAsync(sonuc);
+            await userStore.Context.SaveChangesAsync();
+
+            await SiteSettings.SendMail(new MailModel()
+            {
+                To = sonuc.Email,
+                Subject = "ŞİFRENİZ DEĞİŞTİ",
+                Message = $"Merhaba {sonuc.Name} {sonuc.Surname} Şifrenixz değişti YENİ ŞİFRENİZ {randomPass}"
+            });
+            ViewBag.sonuc = "Email adresinize yeni şifreniz gönderildi";
+            return View();
+
+        }
     }
 }
