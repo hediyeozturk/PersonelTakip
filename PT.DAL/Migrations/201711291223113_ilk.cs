@@ -3,7 +3,7 @@ namespace PT.DAL.Migrations
     using System;
     using System.Data.Entity.Migrations;
     
-    public partial class bes : DbMigration
+    public partial class ilk : DbMigration
     {
         public override void Up()
         {
