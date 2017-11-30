@@ -52,10 +52,10 @@ namespace PT.Web.MVC.Controllers
             ApplicationUser user = new ApplicationUser()
             {
                 Name = model.Name,
-                Surname=model.Surname,
-                Email=model.Email,
-                UserName=model.Username,
-                ActivationCode=activationCod
+                Surname = model.Surname,
+                Email = model.Email,
+                UserName = model.Username,
+                ActivationCode = activationCod
             };
 
             var response = userManager.Create(user, model.Password);
@@ -64,7 +64,7 @@ namespace PT.Web.MVC.Controllers
             {
                 string siteURL = Request.Url.Scheme + Uri.SchemeDelimiter + Request.Url.Host + (Request.Url.IsDefaultPort ? "" : ":" + Request.Url.Port);
 
-                if (userManager.Users.Count()==1)
+                if (userManager.Users.Count() == 1)
                 {
                     userManager.AddToRole(user.Id, "Admin");
                     await SiteSettings.SendMail(new MailModel
@@ -100,7 +100,7 @@ namespace PT.Web.MVC.Controllers
         }
         [ValidateAntiForgeryToken]
         [HttpPost]
-        public async Task<ActionResult> Login(LoginViewModel model )
+        public async Task<ActionResult> Login(LoginViewModel model)
         {
             if (!ModelState.IsValid)
             {
@@ -109,7 +109,7 @@ namespace PT.Web.MVC.Controllers
 
             var userManager = MemberShipTools.NewUserManager();
             var user = await userManager.FindAsync(model.Username, model.Password);
-            if (user==null)
+            if (user == null)
             {
                 ModelState.AddModelError(string.Empty, "Böyle bir kullanıcı bulunamadı");
                 return View(model);
@@ -136,7 +136,7 @@ namespace PT.Web.MVC.Controllers
             var userStore = MemberShipTools.NewUserStore();
             var userManager = new UserManager<ApplicationUser>(userStore);
             var sonuc = userStore.Context.Set<ApplicationUser>().FirstOrDefault(x => x.ActivationCode == code);
-            if (sonuc==null)
+            if (sonuc == null)
             {
                 ViewBag.sonuc = "Aktivasyon işlemi başarısız";
                 return View();
@@ -150,15 +150,15 @@ namespace PT.Web.MVC.Controllers
             userManager.RemoveFromRole(sonuc.Id, "Passive");
             userManager.AddToRole(sonuc.Id, "User");
 
-            ViewBag.sonuc =$"Merhaba {sonuc.Name}{sonuc.Surname} Aktivasyon işlemi başarılı";
+            ViewBag.sonuc = $"Merhaba {sonuc.Name}{sonuc.Surname} Aktivasyon işlemi başarılı";
 
             await SiteSettings.SendMail(new MailModel()
             {
                 To = sonuc.Email,
                 Message = ViewBag.sonuc.ToString(),
-                Subject="Aktivasyon",
-                Bcc="sdkalszd@gmail.com"
-                
+                Subject = "Aktivasyon",
+                Bcc = "sdkalszd@gmail.com"
+
             });
             return View();
         }
@@ -175,7 +175,7 @@ namespace PT.Web.MVC.Controllers
             var userStore = MemberShipTools.NewUserStore();
             var userManager = new UserManager<ApplicationUser>(userStore);
             var sonuc = userStore.Context.Set<ApplicationUser>().FirstOrDefault(x => x.Email == email);
-            if (sonuc==null)
+            if (sonuc == null)
             {
                 ViewBag.sonuc = "Emaill Adresiniz Sistemde Kayıtlı Değil";
                 return View();
@@ -194,6 +194,123 @@ namespace PT.Web.MVC.Controllers
             ViewBag.sonuc = "Email adresinize yeni şifreniz gönderildi";
             return View();
 
+        }
+
+        [Authorize]
+        public ActionResult Profile()
+        {
+            var userManager = MemberShipTools.NewUserManager();
+            var user = userManager.FindById(HttpContext.GetOwinContext().Authentication.User.Identity.GetUserId());
+            var model = new ProfilePasswordViewModel()
+            {
+                ProfileModel = new ProfileViewModel
+                {
+                    Id = user.Id,
+                    Name = user.Name,
+                    Surname = user.Surname,
+                    Email = user.Email,
+                    UserName = user.UserName
+                }
+
+            };
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> Profile(ProfilePasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+            try
+            {
+                var userStore = MemberShipTools.NewUserStore();
+                var userManager = new UserManager<ApplicationUser>(userStore);
+                var user = userManager.FindById(model.ProfileModel.Id);
+
+                user.Name = model.ProfileModel.Name;
+                user.Surname = model.ProfileModel.Surname;
+                if (user.Email != model.ProfileModel.Email)
+                {
+                    user.Email = model.ProfileModel.Email;
+                    if (HttpContext.User.IsInRole("Admin"))
+                    {
+                        userManager.RemoveFromRole(user.Id, "Admin");
+                    }
+                    else if (HttpContext.User.IsInRole("User"))
+                    {
+                        userManager.RemoveFromRole(user.Id, "User");
+                    }
+                    userManager.AddToRole(user.Id, "Passive");
+                    user.ActivationCode = Guid.NewGuid().ToString().Replace("-", "");
+                    string siteUrl = Request.Url.Scheme + Uri.SchemeDelimiter + Request.Url.Host + (Request.Url.IsDefaultPort ? "" : ":" + Request.Url.Port);
+
+                    await SiteSettings.SendMail(new MailModel
+                    {
+                        To = user.Email,
+                        Subject = "Personel Yönetimi-Aktivasyon",
+                        Message = $"Merhaba {user.Name}{user.Surname}, </br> Sisteme başarı ile kayıt oldunuz. <br/> Hesabınızı aktifleştirmek için <a href='{siteUrl}/Account/Activation?code={user.ActivationCode}'>Aktivasyon Kodu</a>",
+                    });
+
+
+                }
+                await userStore.UpdateAsync(user);
+                await userStore.Context.SaveChangesAsync();
+                var model1 = new ProfilePasswordViewModel()
+                {
+                    ProfileModel = new ProfileViewModel
+                    {
+                        Id = user.Id,
+                        Name = user.Name,
+                        Surname = user.Surname,
+                        Email = user.Email,
+                        UserName = user.UserName
+                    }
+
+                };
+                ViewBag.sonuc = "Bilgileriniz Güncellendi";
+                return View(model1);
+            }
+            catch (Exception ex)
+            {
+
+                ViewBag.sonuc = ex.Message;
+                return View(model);
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> UpdatePassword(ProfileViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+            try
+            {
+                var userStore = MemberShipTools.NewUserStore();
+                var userManager = new UserManager<ApplicationUser>(userStore);
+                var user = userManager.FindById(model.Id);
+                user = userManager.Find(user.UserName, model.OldPassword);
+                if (user == null)
+                {
+                    ModelState.AddModelError(string.Empty, "Mevcut Şifreniz yanlış girilmiştir");
+                    return View("Profil", model);
+                }
+                await userStore.SetPasswordHashAsync(user, userManager.PasswordHasher.HashPassword(model.NewPassword));
+                await userStore.UpdateAsync(user);
+                await userStore.Context.SaveChangesAsync();
+                HttpContext.GetOwinContext().Authentication.SignOut();
+                return View();
+            }
+            catch (Exception ex)
+            {
+                ViewBag.sonuc = "Hata oluştu" + ex.Message;
+                return View("Profil", model);
+            }
         }
     }
 }
